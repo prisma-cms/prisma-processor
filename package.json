@@ -1,6 +1,6 @@
 {
   "name": "@prisma-cms/prisma-processor",
-  "version": "1.0.2-beta",
+  "version": "1.0.3-beta",
   "main": "lib/index.js",
   "module": "es/index.js",
   "files": [
