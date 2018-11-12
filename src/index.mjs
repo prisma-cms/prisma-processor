@@ -1,10 +1,49 @@
- 
+
 
 import moment from "moment";
 
-import {
-  getUserId,
-} from "@prisma-cms/prisma-auth";
+import chalk from "chalk";
+
+// import Auth from "@prisma-cms/prisma-auth";
+
+// const {
+//   getUserId,
+// } = Auth;
+
+// console.log("getUserId", getUserId);
+
+import jwt from "jsonwebtoken";
+
+
+
+class AuthError extends Error {
+  constructor() {
+    super('Not authorized')
+  }
+}
+
+export const getUserId = async function (ctx, token) {
+
+  const Authorization = token || (ctx.request && ctx.request.get('Authorization'))
+
+  if (Authorization) {
+    const token = Authorization.replace('Bearer ', '')
+    const { userId } = jwt.verify(token, process.env.APP_SECRET)
+
+    const userExists = await ctx.db.exists.User({
+      id: userId,
+    });
+
+    if (!userExists) {
+      throw new AuthError()
+    }
+
+    return userId
+  }
+
+  throw new AuthError()
+}
+
 
 class PrismaProcessor {
 
@@ -32,23 +71,71 @@ class PrismaProcessor {
   // success;
 
 
-  async log(options) {
+  fatal(message) {
+    return this.log(message, "Fatal");
+  }
+
+  error(message) {
+
+    // if (message instanceof Error || typeof message !== "object") {
+    //   message = {
+    //     message,
+    //   };
+    // }
+
+    return this.log(message, "Error");
+  }
+
+  async log(options, level = "Info") {
+
+
+    // console.log(chalk.red.bgBlue("log"), typeof options, options instanceof Error, options);
+    // console.log(chalk.red.bgBlue("log"), typeof options, options instanceof Error);
+
+    // return;
 
     if (typeof options === "string") {
       options = {
         message: options,
+        level,
       };
     }
+    else if (options instanceof Error) {
+      options = {
+        message: options,
+        level,
+      };
+    }
+    else if (typeof options !== "object" || options.message === undefined) {
+      try {
+        options = {
+          message: JSON.stringify(options),
+        };
+      }
+      catch (error) {
+        options = {
+          message: error,
+        };
+      }
+    }
+    // else if (typeof options !== "object") {
+    //   options = {
+    //     message: options,
+    //   };
+    // }
+
+
+    // console.log(chalk.red.bgWhite("log"), typeof options, options instanceof Error, options);
 
     let {
       message,
-      level = "Info",
       objectType,
       stack,
     } = options;
 
     if (message === undefined) {
-      throw (new Error("Message is undefined"));
+      // throw (new Error("Message is undefined"));
+      return this.log(new Error("Message is undefined"), "Error");
     }
 
 
@@ -61,22 +148,21 @@ class PrismaProcessor {
 
     let error;
 
-    switch (level) {
+    // switch (level) {
 
-      case "Fatal":
+    //   case "Fatal":
 
-        error = new Error(message);
+    //     error = new Error(message);
 
-        // console.log("Error", error);
+    //     // console.log("Error", error);
 
-        stack = error.stack;
+    //     stack = error.stack;
 
-        break;
+    //     break;
 
-    }
+    // }
 
-
-    await this.ctx.db.mutation.createLog({
+    await this.createLog({
       data: {
         message,
         objectType,
@@ -85,32 +171,20 @@ class PrismaProcessor {
       },
     });
 
-    if (error) {
+    if (level === "Fatal") {
       throw (error);
     }
 
   }
 
 
-  fatal(message) {
-    return this.log({
-      message,
-      level: "Fatal",
-    });
-  }
+  async createLog(args) {
 
-  error(message) {
-
-    if (message instanceof Error || typeof message !== "object") {
-      message = {
-        message,
-      };
+    if (!args.data) {
+      return this.log(new Error("args.data is empty"), "Error");
     }
 
-    return this.log({
-      ...message,
-      level: "Error",
-    });
+    await this.ctx.db.mutation.createLog(args);
   }
 
 
@@ -166,7 +240,27 @@ class PrismaProcessor {
 
 
   addError(message) {
-    this.message = message instanceof Error ? message.message : message;
+
+    if (!message) {
+
+    }
+    else if (message instanceof Error) {
+      message = message.message;
+    }
+    else if (Array.isArray(message) && message.findIndex(n => n.message) !== -1) {
+      message = message.map(n => n.message).filter(n => n).join("; ");
+    }
+    else if (typeof message !== "string") {
+      try {
+        message = JSON.stringify(message);
+      }
+      catch (error) {
+        message = error.message;
+      }
+    }
+
+
+    this.message = message;
     this.success = false;
   }
 
@@ -185,9 +279,11 @@ class PrismaProcessor {
       db,
     } = this.ctx;
 
-    // console.log("mutatoin db", db);
-    // console.log("mutatoin db", args);
-    // console.log("mutatoin info", info);
+    // console.log("mutation db", db);
+    // console.log("mutation db", args);
+    // console.log("mutation info", info);
+
+    // return;
 
     if (!this.hasErrors()) {
       const result = await db.mutation[method](args, info)
@@ -207,11 +303,16 @@ class PrismaProcessor {
 
     return await this.mutate(`create${objectType}`, args, info)
       .catch(error => {
+
+        console.log(chalk.red(`create ${objectType} error`), error);
+
+        this.addError(error);
+
         this.error({
           message: error,
           objectType,
         });
-        this.addError(error);
+
         throw (error);
       })
       ;
@@ -230,7 +331,10 @@ class PrismaProcessor {
       })
       .catch(error => {
 
+        console.log(chalk.red(`createWithResponse ${objectType} error`), error);
+
         this.addError(error);
+
         this.error(error);
         // throw (error); 
 
@@ -299,7 +403,7 @@ class PrismaProcessor {
 
   }
 
-  prepareResponse() { 
+  prepareResponse() {
 
     const response = {
       success: !this.hasErrors() && this.data ? true : false,
@@ -307,7 +411,7 @@ class PrismaProcessor {
       errors: this.errors,
       data: this.data,
     }
- 
+
 
     return response;
 
