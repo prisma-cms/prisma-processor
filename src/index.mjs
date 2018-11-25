@@ -4,13 +4,6 @@ import moment from "moment";
 
 import chalk from "chalk";
 
-// import Auth from "@prisma-cms/prisma-auth";
-
-// const {
-//   getUserId,
-// } = Auth;
-
-// console.log("getUserId", getUserId);
 
 import jwt from "jsonwebtoken";
 
@@ -61,6 +54,9 @@ class PrismaProcessor {
       // Type,
       message: "",
       errors: [],
+
+      // Если приватный, будет выполнять проверки при обновлении объекта
+      private: false,
     });
 
   }
@@ -89,11 +85,6 @@ class PrismaProcessor {
   async log(options, level = "Info") {
 
 
-    // console.log(chalk.red.bgBlue("log"), typeof options, options instanceof Error, options);
-    // console.log(chalk.red.bgBlue("log"), typeof options, options instanceof Error);
-
-    // return;
-
     if (typeof options === "string") {
       options = {
         message: options,
@@ -118,14 +109,6 @@ class PrismaProcessor {
         };
       }
     }
-    // else if (typeof options !== "object") {
-    //   options = {
-    //     message: options,
-    //   };
-    // }
-
-
-    // console.log(chalk.red.bgWhite("log"), typeof options, options instanceof Error, options);
 
     let {
       message,
@@ -147,20 +130,6 @@ class PrismaProcessor {
     objectType = objectType !== undefined ? objectType : this.objectType;
 
     let error;
-
-    // switch (level) {
-
-    //   case "Fatal":
-
-    //     error = new Error(message);
-
-    //     // console.log("Error", error);
-
-    //     stack = error.stack;
-
-    //     break;
-
-    // }
 
     await this.createLog({
       data: {
@@ -279,11 +248,7 @@ class PrismaProcessor {
       db,
     } = this.ctx;
 
-    // console.log("mutation db", db);
-    // console.log("mutation db", args);
-    // console.log("mutation info", info);
-
-    // return;
+    await this.checkPermission(method, args, info);
 
     if (!this.hasErrors()) {
       const result = await db.mutation[method](args, info)
@@ -299,12 +264,66 @@ class PrismaProcessor {
   }
 
 
+  async checkPermission(method, args, info) {
+
+    /**
+     * Если это приватный объект, то редактировать его могут только владельцы или судо
+     */
+    if (this.private) {
+
+      const {
+        where,
+      } = args;
+
+      if (where) {
+
+        const {
+          currentUser,
+        } = this.ctx;
+
+        if (!currentUser) {
+          return this.addError("Пожалуйста, авторизуйтесь");
+        }
+
+        let objectType = method.replace(/^(update|create)(.{1})/, `$2`).toLowerCase();
+
+        let object = await this.getObjectQuery(objectType, where, `{
+          id
+          CreatedBy{
+            id
+          }
+        }`);
+
+        if (!object) {
+          return this.addError("Не был получен объект");
+        }
+        else if (!object.CreatedBy || object.CreatedBy.id !== currentUser.id) {
+          return this.addError("Нельзя редактировать чужой объект");
+        }
+
+      }
+
+    }
+
+    return true;
+  }
+
+
+  async getObjectQuery(objectType, where, info) {
+
+    return this.query(objectType, {
+      where,
+    }, info);
+
+  }
+
+
   async create(objectType, args, info) {
 
     return await this.mutate(`create${objectType}`, args, info)
       .catch(error => {
 
-        console.log(chalk.red(`create ${objectType} error`), error);
+        console.error(chalk.red(`create ${objectType} error`), error);
 
         this.addError(error);
 
@@ -331,7 +350,7 @@ class PrismaProcessor {
       })
       .catch(error => {
 
-        console.log(chalk.red(`createWithResponse ${objectType} error`), error);
+        console.error(chalk.red(`createWithResponse ${objectType} error`), error);
 
         this.addError(error);
 

@@ -1,3 +1,7 @@
+1.1.1
+======================================
+- Added checkPermission method
+
 1.1.0
 ======================================
 - Breaking changes. Moved into .mjs
