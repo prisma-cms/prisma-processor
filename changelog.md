@@ -1,3 +1,7 @@
+1.1.2
+======================================
+- Added sudo permissions
+
 1.1.1
 ======================================
 - Added checkPermission method
