@@ -285,20 +285,30 @@ class PrismaProcessor {
           return this.addError("Пожалуйста, авторизуйтесь");
         }
 
-        let objectType = method.replace(/^(update|create)(.{1})/, `$2`).toLowerCase();
+        const {
+          id: currentUserId,
+          sudo,
+        } = currentUser;
 
-        let object = await this.getObjectQuery(objectType, where, `{
-          id
-          CreatedBy{
+
+        if (sudo !== true) {
+
+          let objectType = method.replace(/^(update|create)(.{1})/, `$2`).toLowerCase();
+
+          let object = await this.getObjectQuery(objectType, where, `{
             id
-          }
-        }`);
+            CreatedBy{
+              id
+            }
+          }`);
 
-        if (!object) {
-          return this.addError("Не был получен объект");
-        }
-        else if (!object.CreatedBy || object.CreatedBy.id !== currentUser.id) {
-          return this.addError("Нельзя редактировать чужой объект");
+          if (!object) {
+            return this.addError("Не был получен объект");
+          }
+          else if (!object.CreatedBy || object.CreatedBy.id !== currentUserId) {
+            return this.addError("Нельзя редактировать чужой объект");
+          }
+
         }
 
       }
