@@ -397,6 +397,42 @@ class PrismaProcessor {
 
   }
 
+  async update(objectType, args, info) {
+
+    return await this.mutate(`update${objectType}`, args, info)
+      .then(r => {
+        this.data = r;
+        return r;
+      })
+      .catch(error => {
+        this.error({
+          message: error,
+          objectType,
+        });
+        this.addError(error);
+        throw (error);
+      })
+      ;
+
+    // return this.prepareResponse();
+
+  }
+
+
+
+
+  async delete(objectType, args, info) {
+
+    const result = await this.mutate(`delete${objectType}`, args, info)
+      ;
+
+    if (!result) {
+      throw new Error(this.message || "Ошибка выполнения запроса");
+    }
+
+    return result;
+  }
+
 
   async updateWithResponse(objectType, args, info) {
 
