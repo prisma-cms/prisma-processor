@@ -293,7 +293,7 @@ class PrismaProcessor {
 
         if (sudo !== true) {
 
-          let objectType = method.replace(/^(update|create)(.{1})(.*)/, (match, p1, p2, p3) => `${p2.toLowerCase()}${p3}`);
+          let objectType = method.replace(/^(create|update|delete)(.{1})(.*)/, (match, p1, p2, p3) => `${p2.toLowerCase()}${p3}`);
 
           let object = await this.getObjectQuery(objectType, where, `{
             id
