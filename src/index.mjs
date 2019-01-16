@@ -491,6 +491,28 @@ class PrismaProcessor {
     return date ? moment(date).utcOffset(date).format("YYYY-MM-DD HH:mm:ss.000") : undefined;
   }
 
+
+
+  setRequestTimeLimit(seconds) {
+
+    const {
+      request: req,
+      response: res,
+    } = this.ctx;
+
+    /**
+     * Устанавливаем лимит на время запроса, иначе будет обрываться на 120 сек.
+     */
+    res && res.setTimeout(seconds * 1000, () => {
+      console.error('Request has timed out.');
+      // response.status(500);
+      res.writeHead(408, 'Request Timeout');
+      res.end('Timeout!')
+      // throw(new Error("Request Timeout"));
+    });
+
+  }
+
 }
 
 export default PrismaProcessor;
