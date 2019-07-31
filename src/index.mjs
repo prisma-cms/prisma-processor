@@ -57,6 +57,11 @@ class PrismaProcessor {
 
       // Если приватный, будет выполнять проверки при обновлении объекта
       private: false,
+
+      /**
+       * Если да, то при создании будет автоматически привязываться CreatedBy
+       */
+      ownable: false,
     });
 
   }
@@ -329,6 +334,41 @@ class PrismaProcessor {
 
 
   async create(objectType, args, info) {
+
+    let {
+      data,
+    } = args;
+
+
+    if (this.ownable) {
+
+      const {
+        currentUser,
+      } = this.ctx;
+
+
+      const {
+        id: currentUserId,
+      } = currentUser || {};
+
+      if (currentUserId) {
+
+        Object.assign(data, {
+          CreatedBy: {
+            connect: {
+              id: currentUserId,
+            },
+          },
+        });
+
+      }
+
+    }
+
+    Object.assign(args, {
+      data,
+    });
+
 
     return await this.mutate(`create${objectType}`, args, info)
       .catch(error => {
