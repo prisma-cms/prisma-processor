@@ -280,15 +280,15 @@ class PrismaProcessor {
         where,
       } = args;
 
+      const {
+        currentUser,
+      } = this.ctx;
+
+      if (!currentUser) {
+        return this.addError("Пожалуйста, авторизуйтесь");
+      }
+
       if (where) {
-
-        const {
-          currentUser,
-        } = this.ctx;
-
-        if (!currentUser) {
-          return this.addError("Пожалуйста, авторизуйтесь");
-        }
 
         const {
           id: currentUserId,
@@ -436,28 +436,6 @@ class PrismaProcessor {
     // return this.prepareResponse();
 
   }
-
-  async update(objectType, args, info) {
-
-    return await this.mutate(`update${objectType}`, args, info)
-      .then(r => {
-        this.data = r;
-        return r;
-      })
-      .catch(error => {
-        this.error({
-          message: error,
-          objectType,
-        });
-        this.addError(error);
-        throw (error);
-      })
-      ;
-
-    // return this.prepareResponse();
-
-  }
-
 
 
 
