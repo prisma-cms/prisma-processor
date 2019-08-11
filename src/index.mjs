@@ -488,9 +488,11 @@ class PrismaProcessor {
 
   prepareResponse() {
 
+    const hasErrors = this.hasErrors();
+
     const response = {
-      success: !this.hasErrors() && this.data ? true : false,
-      message: this.message,
+      success: !hasErrors && this.data ? true : false,
+      message: !this.message && hasErrors ? "Check form data" : this.message,
       errors: this.errors,
       data: this.data,
     }
