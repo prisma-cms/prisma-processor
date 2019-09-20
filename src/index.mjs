@@ -280,13 +280,17 @@ class PrismaProcessor {
         where,
       } = args;
 
-      const {
-        currentUser,
-      } = this.ctx;
+      // const {
+      //   currentUser,
+      // } = this.ctx;
 
-      if (!currentUser) {
-        return this.addError("Пожалуйста, авторизуйтесь");
-      }
+      // if (!currentUser) {
+      //   return this.addError("Пожалуйста, авторизуйтесь");
+      // }
+
+      const currentUser = await this.getUser(true);
+
+      // console.log("currentUser", currentUser);
 
       if (where) {
 
@@ -342,26 +346,27 @@ class PrismaProcessor {
 
     if (this.ownable) {
 
-      const {
-        currentUser,
-      } = this.ctx;
+      // const {
+      //   currentUser,
+      // } = this.ctx;
 
+      const currentUser = await this.getUser(true);
 
       const {
         id: currentUserId,
-      } = currentUser || {};
+      } = currentUser;
 
-      if (currentUserId) {
+      // if (currentUserId) {
 
-        Object.assign(data, {
-          CreatedBy: {
-            connect: {
-              id: currentUserId,
-            },
+      Object.assign(data, {
+        CreatedBy: {
+          connect: {
+            id: currentUserId,
           },
-        });
+        },
+      });
 
-      }
+      // }
 
     }
 
