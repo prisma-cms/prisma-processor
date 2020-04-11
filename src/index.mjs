@@ -59,7 +59,8 @@ class PrismaProcessor {
       private: false,
 
       /**
-       * Если да, то при создании будет автоматически привязываться CreatedBy
+       * Если да, то при создании будет автоматически привязываться CreatedBy,
+       * если пользователь авторизован.
        */
       ownable: false,
     });
@@ -346,27 +347,30 @@ class PrismaProcessor {
 
     if (this.ownable) {
 
-      // const {
-      //   currentUser,
-      // } = this.ctx;
-
-      const currentUser = await this.getUser(true);
+      /**
+       * Получаем текущего пользователя.
+       */
+      const currentUser = await this.getUser();
 
       const {
         id: currentUserId,
-      } = currentUser;
+      } = currentUser || {};
 
-      // if (currentUserId) {
+      /**
+       * Если был получен, то привязываем его в качестве создателя объекта.
+       * Если нет, то нет (необходимость авторизации определяет свойство this.private).
+       */
+      if (currentUserId) {
 
-      Object.assign(data, {
-        CreatedBy: {
-          connect: {
-            id: currentUserId,
+        Object.assign(data, {
+          CreatedBy: {
+            connect: {
+              id: currentUserId,
+            },
           },
-        },
-      });
+        });
 
-      // }
+      }
 
     }
 
